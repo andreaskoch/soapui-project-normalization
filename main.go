@@ -32,7 +32,7 @@ func main() {
 		normalizedLine := []byte(line)
 
 		// replace the session id
-		sessionIdPattern := regexp.MustCompile(`<sessionId>[^<]+?</sessionId`)
+		sessionIdPattern := regexp.MustCompile(`<sessionId>[^<]+?</sessionId>`)
 		normalizedLine = sessionIdPattern.ReplaceAll(normalizedLine, []byte(`<sessionId>?</sessionId>`))
 
 		// remove white space
