@@ -1,9 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"regexp"
 )
@@ -23,48 +24,56 @@ func main() {
 		os.Exit(2)
 	}
 
-	// read the file
-	content, err := ioutil.ReadAll(file)
-	if err != nil {
-		fmt.Println("Error while reading file %q.\n", filepath)
-		os.Exit(2)
-	}
-
-	// a new line seperator which will later be removed
-	newlineString := `-fsdjfhs-NEWLINE-dasjkdjasdkl-`
-
-	// replace windows line endings
-	newLinePatternWindows := regexp.MustCompile(`\r\n`)
-	content = newLinePatternWindows.ReplaceAll(content, []byte(newlineString))
-
-	// replace unix line endings
-	newLinePatternUnix := regexp.MustCompile(`\n`)
-	content = newLinePatternUnix.ReplaceAll(content, []byte(newlineString))
-
-	// line breaks after tags
-	openingTagPattern := regexp.MustCompile(`(<\w+[^>]*?>)`)
-	content = openingTagPattern.ReplaceAll(content, []byte(newlineString+`$1`+newlineString))
-
-	// line breaks before closing tags
-	closingTagPattern := regexp.MustCompile(`(</[^>]+>)`)
-	content = closingTagPattern.ReplaceAll(content, []byte(newlineString+`$1`+newlineString))
-
 	// split into lines
-	lines := bytes.Split(content, []byte(newlineString))
+	lines := getLines(file)
+
 	for _, line := range lines {
 
-		normalizedLine := line
+		normalizedLine := []byte(line)
 
 		// replace the session id
 		sessionIdPattern := regexp.MustCompile(`<sessionId>[^<]+?</sessionId`)
 		normalizedLine = sessionIdPattern.ReplaceAll(normalizedLine, []byte(`<sessionId>?</sessionId>`))
 
-		// trim the line
+		// remove white space
 		normalizedLine = bytes.TrimSpace(normalizedLine)
 
 		// print the normalized line
 		if len(normalizedLine) > 0 {
-			fmt.Printf("%s\n", line)
+			fmt.Printf("%s\n", normalizedLine)
 		}
 	}
+}
+
+// readLine returns a single line (without the ending \n)
+// from the input buffered reader.
+// An error is returned iff there is an error with the
+// buffered reader.
+func readLine(bufferedReader *bufio.Reader) (string, error) {
+	var (
+		isPrefix bool  = true
+		err      error = nil
+		line, ln []byte
+	)
+
+	for isPrefix && err == nil {
+		line, isPrefix, err = bufferedReader.ReadLine()
+		ln = append(ln, line...)
+	}
+
+	return string(ln), err
+}
+
+// Get all lines of a given file
+func getLines(inFile io.Reader) []string {
+
+	lines := make([]string, 0, 10)
+	bufferedReader := bufio.NewReader(inFile)
+	line, err := readLine(bufferedReader)
+	for err == nil {
+		lines = append(lines, line)
+		line, err = readLine(bufferedReader)
+	}
+
+	return lines
 }
